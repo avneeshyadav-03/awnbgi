@@ -3,106 +3,782 @@
 {% block page_title %}{{ get_text('register_complaint') }}{% endblock %}
 {% block breadcrumb %}Smart Grievance / Citizen Service / {{ get_text('register_complaint') }}{% endblock %}
 
+{% block head_extra %}
+<style>
+    /* ── Register Complaint – Scoped Styles ─────────────────────────────── */
+    .rc-wrapper {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 4px 0 40px;
+    }
+
+    /* Page heading */
+    .rc-heading {
+        margin-bottom: 28px;
+    }
+
+    .rc-heading h2 {
+        margin: 0 0 6px;
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+    }
+
+    .rc-heading p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #64748b;
+        font-weight: 400;
+    }
+
+    /* Card shell */
+    .rc-card {
+        background: rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(18px) saturate(160%);
+        border: 1px solid rgba(255, 255, 255, 0.75);
+        border-radius: 20px;
+        box-shadow: 0 4px 24px rgba(15, 23, 42, 0.07);
+        overflow: hidden;
+    }
+
+    /* Card section */
+    .rc-section {
+        padding: 24px 28px;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    }
+
+    .rc-section:last-child {
+        border-bottom: none;
+    }
+
+    /* Section label row */
+    .rc-section-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+    }
+
+    .rc-section-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .rc-section-icon.blue {
+        background: rgba(59, 130, 246, 0.10);
+    }
+
+    .rc-section-icon.purple {
+        background: rgba(139, 92, 246, 0.10);
+    }
+
+    .rc-section-icon.teal {
+        background: rgba(20, 184, 166, 0.10);
+    }
+
+    .rc-section-icon.amber {
+        background: rgba(245, 158, 11, 0.10);
+    }
+
+    .rc-section-label h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .rc-section-label p {
+        margin: 2px 0 0;
+        font-size: 0.74rem;
+        color: #94a3b8;
+    }
+
+    /* Field row helpers */
+    .rc-field-row {
+        display: grid;
+        gap: 14px;
+    }
+
+    .rc-field-row.cols-2 {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .rc-field-row.cols-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .rc-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .rc-field.span-2 {
+        grid-column: span 2;
+    }
+
+    .rc-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #475569;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .rc-input,
+    .rc-select,
+    .rc-textarea {
+        border: 1.5px solid rgba(203, 213, 225, 0.9);
+        border-radius: 12px;
+        padding: 11px 14px;
+        background: #ffffff;
+        font-size: 0.875rem;
+        color: #0f172a;
+        outline: none;
+        transition: border-color 0.18s, box-shadow 0.18s;
+        width: 100%;
+    }
+
+    .rc-input:focus,
+    .rc-select:focus,
+    .rc-textarea:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3.5px rgba(59, 130, 246, 0.14);
+    }
+
+    .rc-input[readonly] {
+        background: #f1f5f9;
+        color: #64748b;
+        cursor: not-allowed;
+    }
+
+    .rc-select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
+    }
+
+    .rc-textarea {
+        resize: vertical;
+        min-height: 140px;
+        line-height: 1.6;
+    }
+
+    /* Location section extras */
+    .rc-location-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .rc-live-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+        color: #ffffff;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: opacity 0.18s, transform 0.15s;
+        box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+    }
+
+    .rc-live-btn:hover:not(:disabled) {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    .rc-live-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .rc-live-btn .location-spinner {
+        display: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #fff;
+        animation: rc-spin 0.8s linear infinite;
+    }
+
+    .rc-live-btn.loading .location-spinner {
+        display: inline-block;
+    }
+
+    @keyframes rc-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .rc-location-status {
+        font-size: 0.76rem;
+        color: #94a3b8;
+        margin-top: 8px;
+        min-height: 18px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .rc-location-status[data-tone="success"] {
+        color: #16a34a;
+    }
+
+    .rc-location-status[data-tone="error"] {
+        color: #dc2626;
+    }
+
+    .rc-location-status[data-tone="loading"] {
+        color: #f59e0b;
+    }
+
+    /* Voice row */
+    .rc-voice-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+
+    .rc-lang-select {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border: 1.5px solid rgba(203, 213, 225, 0.9);
+        border-radius: 999px;
+        padding: 6px 14px;
+        background: #ffffff;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #334155;
+    }
+
+    .rc-lang-select select {
+        border: none;
+        background: transparent;
+        outline: none;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #334155;
+        cursor: pointer;
+    }
+
+    .rc-voice-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 16px;
+        border-radius: 999px;
+        background: rgba(20, 184, 166, 0.1);
+        color: #0d9488;
+        border: 1.5px solid rgba(20, 184, 166, 0.25);
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.18s, transform 0.15s;
+    }
+
+    .rc-voice-btn:hover {
+        background: rgba(20, 184, 166, 0.18);
+        transform: translateY(-1px);
+    }
+
+    /* Upload section */
+    .rc-upload-box {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        border: 1.5px dashed rgba(148, 163, 184, 0.5);
+        border-radius: 14px;
+        padding: 16px 20px;
+        background: rgba(248, 250, 252, 0.7);
+        transition: border-color 0.18s;
+    }
+
+    .rc-upload-box:hover {
+        border-color: #3b82f6;
+    }
+
+    .rc-file-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 18px;
+        border-radius: 10px;
+        background: #ffffff;
+        border: 1.5px solid rgba(203, 213, 225, 0.9);
+        color: #334155;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+    }
+
+    .rc-file-label:hover {
+        background: #f1f5f9;
+        border-color: #3b82f6;
+    }
+
+    .rc-file-count {
+        font-size: 0.78rem;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+
+    .rc-upload-hint {
+        width: 100%;
+        margin-top: 4px;
+        font-size: 0.72rem;
+        color: #94a3b8;
+    }
+
+    /* Submit row */
+    .rc-submit-row {
+        padding: 22px 28px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 14px;
+        background: rgba(248, 250, 252, 0.5);
+        border-top: 1px solid rgba(226, 232, 240, 0.6);
+    }
+
+    .rc-submit-hint {
+        font-size: 0.78rem;
+        color: #94a3b8;
+    }
+
+    .rc-submit-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 32px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+        color: #ffffff;
+        font-size: 0.9rem;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+        transition: opacity 0.18s, transform 0.15s, box-shadow 0.18s;
+        letter-spacing: 0.01em;
+    }
+
+    .rc-submit-btn:hover {
+        opacity: 0.92;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 22px rgba(37, 99, 235, 0.4);
+    }
+
+    .rc-submit-btn:active {
+        transform: translateY(0);
+    }
+
+    .rc-submit-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+        .rc-section {
+            padding: 18px 16px;
+        }
+
+        .rc-submit-row {
+            padding: 16px;
+        }
+
+        .rc-field-row.cols-2,
+        .rc-field-row.cols-3 {
+            grid-template-columns: 1fr;
+        }
+
+        .rc-field.span-2 {
+            grid-column: span 1;
+        }
+
+        .rc-heading h2 {
+            font-size: 1.25rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<section class="form-shell wide">
-    <div class="section-copy">
+<div class="rc-wrapper fade-in-up">
+
+    <!-- Page heading -->
+    <div class="rc-heading">
         <h2>{{ get_text('register_complaint') }}</h2>
-        <p>Submit your grievance and the system will prioritize and route it to the right department.</p>
+        <p>Submit your grievance — our system will <strong>prioritize and route it</strong> to the right department
+            automatically.</p>
     </div>
 
-    <form method="POST" action="{{ url_for('submit_complaint') }}" class="form-grid" enctype="multipart/form-data">
-        <label class="field-group">
-            <span>{{ get_text('username') }}</span>
-            <input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="Your full name"
-                value="{{ session.get('username', '') }}"
-                readonly
-                required
-            />
-        </label>
+    <!-- Main form card -->
+    <form method="POST" action="{{ url_for('submit_complaint') }}" enctype="multipart/form-data" id="rcForm">
+        <div class="rc-card">
 
-        <label class="field-group">
-            <span>{{ get_text('location') }}</span>
-            <input id="location" name="location" type="text" placeholder="Area / Ward / City" required />
-        </label>
-
-        <div class="field-group field-full complaint-upload">
-            <div class="complaint-input">
-                <span>{{ get_text('complaint_text') }}</span>
-                <textarea
-                    id="complaint_text"
-                    name="complaint_text"
-                    rows="6"
-                    placeholder="Describe your issue clearly..."
-                    required
-                ></textarea>
-            </div>
-            <div class="upload-card">
-                <span><strong>Upload Proof (Optional)</strong></span>
-                <div class="upload-control">
-                    <input id="photos" class="file-input" type="file" name="photos" accept="image/*" multiple>
-                    <label class="file-trigger" for="photos">Choose images</label>
-                    <span class="file-count" id="photoCount">0 images selected</span>
+            <!-- ① Citizen Info -->
+            <div class="rc-section">
+                <div class="rc-section-label">
+                    <div class="rc-section-icon blue">👤</div>
+                    <div>
+                        <h3>Citizen Information</h3>
+                        <p>Your registered account details</p>
+                    </div>
                 </div>
-                <small class="upload-hint">Upload up to 2 images (JPG, PNG)</small>
+
+                <div class="rc-field-row">
+                    <div class="rc-field">
+                        <label class="rc-label" for="name">{{ get_text('username') }}</label>
+                        <input class="rc-input" id="name" name="name" type="text"
+                            value="{{ session.get('username', '') }}" readonly required />
+                    </div>
+                </div>
             </div>
+
+            <!-- ② Location -->
+            <div class="rc-section">
+                <div class="rc-section-label">
+                    <div class="rc-section-icon purple">📍</div>
+                    <div>
+                        <h3>{{ get_text('location') }}</h3>
+                        <p>Select your state &amp; district, then enter your area</p>
+                    </div>
+                </div>
+
+                <div class="rc-location-top">
+                    <span></span>
+                    <button type="button" class="rc-live-btn" id="useLocationBtn">
+                        <span>🛰️</span>
+                        <span class="location-label">Use Live Location</span>
+                        <span class="location-spinner" aria-hidden="true"></span>
+                    </button>
+                </div>
+
+                <div class="rc-field-row cols-3">
+                    <div class="rc-field">
+                        <label class="rc-label" for="loc_state">State</label>
+                        <select id="loc_state" class="rc-select" required>
+                            <option value="" disabled selected>Select State</option>
+                        </select>
+                    </div>
+                    <div class="rc-field">
+                        <label class="rc-label" for="loc_district">District</label>
+                        <select id="loc_district" class="rc-select" required>
+                            <option value="" disabled selected>Select District</option>
+                        </select>
+                    </div>
+                    <div class="rc-field">
+                        <label class="rc-label" for="loc_area">Area / Ward</label>
+                        <input id="loc_area" type="text" placeholder="e.g. MP Nagar, Zone 2" class="rc-input"
+                            required />
+                    </div>
+                </div>
+
+                <div class="rc-location-status" id="locationStatus" aria-live="polite"></div>
+                <!-- <button type="button" class="btn btn-ghost location-retry" id="retryLocationBtn" hidden
+                    style="margin-top:6px;font-size:0.78rem;">↩ Reset</button> -->
+
+                <!-- Hidden fields -->
+                <input type="hidden" id="location" name="location" />
+                <input type="hidden" id="latitude" name="latitude" />
+                <input type="hidden" id="longitude" name="longitude" />
+            </div>
+
+            <!-- ③ Complaint Details -->
+            <div class="rc-section">
+                <div class="rc-section-label">
+                    <div class="rc-section-icon teal">📝</div>
+                    <div>
+                        <h3>{{ get_text('complaint_text') }}</h3>
+                        <p>Describe your issue clearly and in detail</p>
+                    </div>
+                </div>
+
+                <div class="rc-voice-row">
+                    <div class="rc-lang-select">
+                        <span>🗣️</span>
+                        <select id="langSelect" name="langSelect">
+                            <option value="hi-IN">Hindi 🇮🇳</option>
+                            <option value="en-US">English 🇺🇸</option>
+                        </select>
+                    </div>
+                    <button type="button" class="rc-voice-btn" onclick="startVoice()">
+                        🎤 Speak
+                    </button>
+                </div>
+
+                <div class="rc-field">
+                    <textarea id="complaint_text" name="complaint_text" class="rc-textarea"
+                        placeholder="Describe your issue clearly — mention the problem, its duration, and any impact it has had…"
+                        required></textarea>
+                </div>
+            </div>
+
+            <!-- ④ Upload Proof -->
+            <div class="rc-section">
+                <div class="rc-section-label">
+                    <div class="rc-section-icon amber">📸</div>
+                    <div>
+                        <h3>Upload Proof <span style="font-weight:400;color:#94a3b8;">(Optional)</span></h3>
+                        <p>Images or videos help resolve your complaint faster</p>
+                    </div>
+                </div>
+
+                <div class="rc-upload-box">
+                    <input id="media" class="file-input" type="file" name="media" accept="image/*,video/*" multiple />
+                    <label class="rc-file-label" for="media">
+                        📂 Choose Files
+                    </label>
+                    <span class="rc-file-count" id="mediaCount">No files selected</span>
+                    <p class="rc-upload-hint">Up to 2 files (images or videos). Video max length: 1 minute.</p>
+                </div>
+            </div>
+
+        </div><!-- /.rc-card -->
+
+        <!-- Submit row (outside card for visual separation) -->
+        <div class="rc-submit-row">
+            <span class="rc-submit-hint">All fields marked as required must be filled.</span>
+            <button type="submit" class="rc-submit-btn" id="rcSubmitBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M22 2L11 13" />
+                    <path d="M22 2L15 22l-4-9-9-4 20-7z" />
+                </svg>
+                {{ get_text('submit') }}
+            </button>
         </div>
 
-        <div class="field-full action-row">
-            <button type="submit" class="btn btn-primary">{{ get_text('submit') }}</button>
-        </div>
     </form>
-</section>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='india_locations.js') }}"></script>
 <script>
-    (function () {
-        const form = document.querySelector("form");
-        if (!form) {
-            return;
-        }
-        const input = form.querySelector("input[name='photos']");
-        const countLabel = document.getElementById("photoCount");
-        const dataTransfer = new DataTransfer();
+    (function initLocations() {
+        const stateSelect = document.getElementById("loc_state");
+        const districtSelect = document.getElementById("loc_district");
+        if (!stateSelect || !districtSelect || typeof indiaLocations === 'undefined') return;
 
-        if (input && countLabel) {
-            input.addEventListener("change", () => {
-                const selected = Array.from(input.files || []);
-                if (!selected.length) {
-                    return;
-                }
+        stateSelect.innerHTML = '<option value="" disabled selected>Select State</option>';
+        Object.keys(indiaLocations).sort().forEach(state => {
+            const opt = document.createElement("option");
+            opt.value = state;
+            opt.textContent = state;
+            stateSelect.appendChild(opt);
+        });
 
-                selected.forEach((file) => {
-                    if (dataTransfer.files.length < 2) {
-                        dataTransfer.items.add(file);
-                    }
+        stateSelect.addEventListener("change", function () {
+            const selectedState = this.value;
+            districtSelect.innerHTML = '<option value="" disabled selected>Select District</option>';
+            if (indiaLocations[selectedState]) {
+                indiaLocations[selectedState].sort().forEach(district => {
+                    const opt = document.createElement("option");
+                    opt.value = district;
+                    opt.textContent = district;
+                    districtSelect.appendChild(opt);
                 });
-
-                if (dataTransfer.files.length > 2) {
-                    alert("You can upload maximum 2 images only");
-                    dataTransfer.items.clear();
-                }
-
-                input.files = dataTransfer.files;
-                const count = dataTransfer.files.length;
-                countLabel.textContent = `${count} image${count === 1 ? "" : "s"} selected`;
-            });
-        }
-
-        form.addEventListener("submit", (event) => {
-            if (!input) {
-                return;
-            }
-            const files = input.files || [];
-            if (files.length > 2) {
-                alert("You can upload maximum 2 images only");
-                event.preventDefault();
             }
         });
+    })();
+
+    function startVoice() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Speech recognition is not supported in this browser.");
+            return;
+        }
+        const complaintBox = document.getElementById("complaint_text");
+        if (!complaintBox) return;
+
+        const recognition = new SpeechRecognition();
+        const langSelect = document.getElementById("langSelect");
+        recognition.lang = langSelect ? langSelect.value : "hi-IN";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onresult = function (event) {
+            complaintBox.value = event.results[0][0].transcript;
+        };
+        recognition.onerror = function (event) {
+            alert("Voice error: " + event.error);
+        };
+        recognition.start();
+    }
+    window.startVoice = startVoice;
+
+    (function () {
+        const form = document.getElementById("rcForm");
+        if (!form) return;
+
+        const input = form.querySelector("input[name='media']");
+        const countLabel = document.getElementById("mediaCount");
+        const maxFiles = 2;
+
+        function updateCount() {
+            if (!input || !countLabel) return;
+            const count = (input.files || []).length;
+            countLabel.textContent = count === 0 ? "No files selected" : `${count} file${count === 1 ? "" : "s"} selected`;
+        }
+
+        if (input) {
+            input.addEventListener("change", () => {
+                const selected = Array.from(input.files || []);
+                if (selected.length > maxFiles) {
+                    alert("Maximum 2 files allowed");
+                    const dt = new DataTransfer();
+                    selected.slice(0, maxFiles).forEach(f => dt.items.add(f));
+                    input.files = dt.files;
+                }
+                updateCount();
+            });
+        }
+        updateCount();
+
+        form.addEventListener("submit", (event) => {
+            if (input && (input.files || []).length > maxFiles) {
+                alert("Maximum 2 files allowed");
+                event.preventDefault();
+                return;
+            }
+            const locState = document.getElementById("loc_state")?.value || "";
+            const locDistrict = document.getElementById("loc_district")?.value || "";
+            const locArea = document.getElementById("loc_area")?.value || "";
+            const hiddenLoc = document.getElementById("location");
+            if (hiddenLoc) hiddenLoc.value = `${locArea}, ${locDistrict}, ${locState}`;
+        });
+    })();
+
+    (function () {
+        const locationInput = document.getElementById("loc_area");
+        const button = document.getElementById("useLocationBtn");
+        const retryButton = document.getElementById("retryLocationBtn");
+        const status = document.getElementById("locationStatus");
+        const latField = document.getElementById("latitude");
+        const lonField = document.getElementById("longitude");
+
+        if (!locationInput || !button || !status || !latField || !lonField) return;
+
+        function setStatus(message, tone) {
+            status.textContent = message || "";
+            status.dataset.tone = tone || "";
+        }
+        function setRetry(visible) { if (retryButton) retryButton.hidden = !visible; }
+        function setLoading(isLoading) {
+            button.disabled = isLoading;
+            button.classList.toggle("loading", isLoading);
+        }
+
+        if (!navigator.geolocation) {
+            setStatus("Location is not supported in this browser.", "error");
+            button.disabled = true;
+            return;
+        }
+
+        const secureHostnames = new Set(["localhost", "127.0.0.1"]);
+        const isSecureContext =
+            window.isSecureContext ||
+            location.protocol === "https:" ||
+            secureHostnames.has(location.hostname);
+
+        async function reverseGeocode(lat, lon) {
+            const response = await fetch("/geocode/reverse", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ latitude: lat, longitude: lon }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data?.error || "Location lookup failed");
+            return data;
+        }
+
+        async function fetchApproxLocation() {
+            setStatus("Trying approximate location…", "loading");
+            setLoading(true);
+            setRetry(false);
+            try {
+                const response = await fetch("/geocode/ip");
+                const data = await response.json();
+                if (!response.ok) throw new Error(data?.error || "Approximate location failed");
+                locationInput.value = data.location || "";
+                latField.value = data.latitude ?? "";
+                lonField.value = data.longitude ?? "";
+                setStatus("Location captured (approximate).", "success");
+            } catch {
+                setStatus("Unable to detect location. Please enter manually.", "error");
+                setRetry(true);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function handleGeoError(err) {
+            if (!err) { setStatus("Unable to fetch location.", "error"); setRetry(true); return; }
+            setStatus("Permission denied or unavailable. Trying approximate location…", "loading");
+            fetchApproxLocation();
+        }
+
+        function applyLocation(data, sourceLabel) {
+            locationInput.value = data.location || "";
+            latField.value = data.latitude ?? "";
+            lonField.value = data.longitude ?? "";
+            setStatus(`Location captured${sourceLabel ? " (" + sourceLabel + ")" : ""}.`, "success");
+            setRetry(false);
+        }
+
+        button.addEventListener("click", () => {
+            setStatus("Fetching live location…", "loading");
+            setLoading(true);
+            setRetry(false);
+
+            if (!isSecureContext) {
+                setStatus("Live location needs HTTPS. Trying approximate location…", "loading");
+                fetchApproxLocation();
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    latField.value = lat.toFixed(6);
+                    lonField.value = lon.toFixed(6);
+                    reverseGeocode(lat, lon)
+                        .then(data => applyLocation(data, "GPS"))
+                        .catch(() => { setStatus("Coordinates captured. Enter area manually.", "error"); setRetry(true); })
+                        .finally(() => setLoading(false));
+                },
+                (error) => { setLoading(false); handleGeoError(error); },
+                { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 }
+            );
+        });
+
+        retryButton?.addEventListener("click", () => button.click());
     })();
 </script>
 {% endblock %}

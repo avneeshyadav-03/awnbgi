@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import time
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
@@ -20,83 +21,163 @@ CATEGORY_TO_DEPARTMENT = {
     "Fire": "Fire Department",
 }
 
+CONTACT_AREAS = [
+    "Misrod",
+    "MP Nagar",
+    "Danish Nagar",
+    "Indus",
+    "Ayodhya Nagar",
+    "Kolar",
+    "BHEL",
+    "Arera Colony",
+]
+
+CONTACT_DEPARTMENTS = [
+    {
+        "name": "Water Department",
+        "phone_prefix": "1800-111",
+        "email_prefix": "water",
+        "office_suffix": "Water Office",
+    },
+    {
+        "name": "Electricity Department",
+        "phone_prefix": "1800-222",
+        "email_prefix": "electricity",
+        "office_suffix": "Electricity Office",
+    },
+    {
+        "name": "Road/Municipal Department",
+        "phone_prefix": "1800-333",
+        "email_prefix": "roads",
+        "office_suffix": "Municipal Office",
+    },
+    {
+        "name": "Garbage Department",
+        "phone_prefix": "1800-444",
+        "email_prefix": "garbage",
+        "office_suffix": "Garbage Office",
+    },
+    {
+        "name": "Healthcare Department",
+        "phone_prefix": "1800-555",
+        "email_prefix": "healthcare",
+        "office_suffix": "Healthcare Office",
+    },
+    {
+        "name": "Fire Department",
+        "phone_prefix": "1800-666",
+        "email_prefix": "fire",
+        "office_suffix": "Fire Office",
+    },
+]
+
 STATUS_FLOW = ["Pending", "In Progress", "Resolved"]
 PRIORITY_FLOW = ["High", "Medium", "Low"]
 
 
 def get_connection() -> sqlite3.Connection:
     """Return a SQLite connection with dict-like row access."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=5)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 5000")
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 
 def init_db() -> None:
     """Create tables and seed departments if they do not exist."""
-    conn = get_connection()
-    cursor = conn.cursor()
+    max_attempts = 3
+    retry_delay_seconds = 0.5
 
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            username TEXT,
-            email TEXT,
-            password_hash TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-    _ensure_user_auth_columns(conn)
-    _ensure_user_unique_indexes(conn)
+    for attempt in range(1, max_attempts + 1):
+        conn = None
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS complaints (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            complaint_uid TEXT UNIQUE NOT NULL,
-            user_id INTEGER NOT NULL,
-            location TEXT NOT NULL,
-            text TEXT NOT NULL,
-            category TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'Pending',
-            priority TEXT NOT NULL DEFAULT 'Low',
-            photo TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-        """
-    )
-    _ensure_status_column(conn)
-    _ensure_priority_column(conn)
-    _ensure_resolved_at_column(conn)
-    _ensure_photo_column(conn)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT,
+                    username TEXT,
+                    email TEXT,
+                    password_hash TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            _ensure_user_auth_columns(conn)
+            _ensure_user_unique_indexes(conn)
 
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS departments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL
-        )
-        """
-    )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS complaints (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    complaint_uid TEXT UNIQUE NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    location TEXT NOT NULL,
+                    latitude REAL,
+                    longitude REAL,
+                    text TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'Pending',
+                    priority TEXT NOT NULL DEFAULT 'Low',
+                    photo TEXT,
+                    media_paths TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+                """
+            )
+            _ensure_status_column(conn)
+            _ensure_priority_column(conn)
+            _ensure_resolved_at_column(conn)
+            _ensure_photo_column(conn)
+            _ensure_media_paths_column(conn)
+            _ensure_location_key_column(conn)
+            _ensure_location_coords_columns(conn)
+            _ensure_escalation_columns(conn)
+            _ensure_department_contacts_table(conn)
 
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS assignments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            complaint_id INTEGER NOT NULL UNIQUE,
-            department_id INTEGER NOT NULL,
-            FOREIGN KEY (complaint_id) REFERENCES complaints (id),
-            FOREIGN KEY (department_id) REFERENCES departments (id)
-        )
-        """
-    )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS departments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL
+                )
+                """
+            )
 
-    _seed_departments(conn)
-    conn.commit()
-    conn.close()
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS assignments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    complaint_id INTEGER NOT NULL UNIQUE,
+                    department_id INTEGER NOT NULL,
+                    FOREIGN KEY (complaint_id) REFERENCES complaints (id),
+                    FOREIGN KEY (department_id) REFERENCES departments (id)
+                )
+                """
+            )
+
+            _seed_departments(conn)
+            _seed_department_contacts(conn)
+            conn.commit()
+            return
+        except sqlite3.OperationalError as exc:
+            message = str(exc).lower()
+            if conn is not None:
+                conn.rollback()
+            is_locked = "database is locked" in message or "database table is locked" in message
+            if is_locked and attempt < max_attempts:
+                time.sleep(retry_delay_seconds)
+                continue
+            raise
+        finally:
+            if conn is not None:
+                conn.close()
 
 
 def _ensure_user_auth_columns(conn: sqlite3.Connection) -> None:
@@ -203,6 +284,123 @@ def _ensure_photo_column(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE complaints ADD COLUMN photo TEXT")
 
 
+def _ensure_media_paths_column(conn: sqlite3.Connection) -> None:
+    """Safely add media_paths column and backfill legacy photo values."""
+    columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(complaints)").fetchall()
+    }
+    if "media_paths" not in columns:
+        conn.execute("ALTER TABLE complaints ADD COLUMN media_paths TEXT")
+
+    conn.execute(
+        """
+        UPDATE complaints
+        SET media_paths = photo
+        WHERE (media_paths IS NULL OR TRIM(media_paths) = '')
+          AND photo IS NOT NULL
+          AND TRIM(photo) != ''
+        """
+    )
+    conn.execute(
+        """
+        UPDATE complaints
+        SET photo = media_paths
+        WHERE (photo IS NULL OR TRIM(photo) = '')
+          AND media_paths IS NOT NULL
+          AND TRIM(media_paths) != ''
+        """
+    )
+
+
+def _ensure_location_key_column(conn: sqlite3.Connection) -> None:
+    """Safely add location_key column and create a lookup index."""
+    columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(complaints)").fetchall()
+    }
+    if "location_key" not in columns:
+        conn.execute("ALTER TABLE complaints ADD COLUMN location_key TEXT")
+    conn.execute(
+        """
+        UPDATE complaints
+        SET location_key = LOWER(TRIM(REPLACE(REPLACE(location, ',', ' '), '.', ' ')))
+        WHERE location_key IS NULL OR TRIM(location_key) = ''
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_complaints_location_key ON complaints(location_key)"
+    )
+
+
+def _ensure_location_coords_columns(conn: sqlite3.Connection) -> None:
+    """Safely add latitude/longitude columns for complaints if missing."""
+    columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(complaints)").fetchall()
+    }
+    if "latitude" not in columns:
+        conn.execute("ALTER TABLE complaints ADD COLUMN latitude REAL")
+    if "longitude" not in columns:
+        conn.execute("ALTER TABLE complaints ADD COLUMN longitude REAL")
+
+
+def _ensure_escalation_columns(conn: sqlite3.Connection) -> None:
+    """Safely add escalation metadata columns."""
+    columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(complaints)").fetchall()
+    }
+    if "is_escalated" not in columns:
+        conn.execute(
+            "ALTER TABLE complaints ADD COLUMN is_escalated INTEGER DEFAULT 0"
+        )
+    if "escalation_reason" not in columns:
+        conn.execute("ALTER TABLE complaints ADD COLUMN escalation_reason TEXT")
+    if "escalation_group" not in columns:
+        conn.execute("ALTER TABLE complaints ADD COLUMN escalation_group TEXT")
+    if "escalation_count" not in columns:
+        conn.execute("ALTER TABLE complaints ADD COLUMN escalation_count INTEGER")
+    if "escalated_at" not in columns:
+        conn.execute("ALTER TABLE complaints ADD COLUMN escalated_at TEXT")
+
+
+def _ensure_department_contacts_table(conn: sqlite3.Connection) -> None:
+    """Ensure the department_contacts table exists."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS department_contacts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            department TEXT NOT NULL,
+            area TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            email TEXT NOT NULL,
+            office_address TEXT NOT NULL,
+            UNIQUE(department, area)
+        )
+        """
+    )
+
+
+def _seed_department_contacts(conn: sqlite3.Connection) -> None:
+    """Insert baseline contact data for each department and area."""
+    cursor = conn.cursor()
+    for dept in CONTACT_DEPARTMENTS:
+        for index, area in enumerate(CONTACT_AREAS, start=1):
+            area_key = area.lower().replace(" ", "").replace("-", "")
+            phone = f"{dept['phone_prefix']}-{200 + index:03d}"
+            email = f"{dept['email_prefix']}.{area_key}@gov.in"
+            office = f"{area} {dept['office_suffix']}"
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO department_contacts
+                    (department, area, phone, email, office_address)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (dept["name"], area, phone, email, office),
+            )
+
+
 def _seed_departments(conn: sqlite3.Connection) -> None:
     """Insert predefined departments used by routing logic."""
     cursor = conn.cursor()
@@ -250,6 +448,7 @@ def create_user_account(
     otp_code: str,
     otp_expiry: str,
     is_verified: int = 0,
+    name: str = "",
 ) -> Tuple[bool, Optional[int], str]:
     """Create an auth user account if username/email are unique."""
     conn = get_connection()
@@ -265,12 +464,13 @@ def create_user_account(
             return False, None, "Username already exists."
         return False, None, "Email already exists."
 
+    display_name = name.strip() if name and name.strip() else username
     cursor.execute(
         """
         INSERT INTO users (name, username, email, password_hash, is_verified, otp_code, otp_expiry)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (username, username, email, password_hash, is_verified, otp_code, otp_expiry),
+        (display_name, username, email, password_hash, is_verified, otp_code, otp_expiry),
     )
     user_id = cursor.lastrowid
     conn.commit()
@@ -295,6 +495,40 @@ def get_user_by_id(user_id: int) -> Optional[sqlite3.Row]:
     row = conn.execute(
         "SELECT * FROM users WHERE id = ?",
         (user_id,),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def get_latest_user_location(user_id: int) -> Optional[str]:
+    """Return the most recent complaint location for a user."""
+    conn = get_connection()
+    row = conn.execute(
+        """
+        SELECT location
+        FROM complaints
+        WHERE user_id = ? AND location IS NOT NULL AND TRIM(location) != ''
+        ORDER BY datetime(created_at) DESC, id DESC
+        LIMIT 1
+        """,
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    if row is None:
+        return None
+    return str(row["location"] or "").strip() or None
+
+
+def fetch_department_contact(department: str, area: str) -> Optional[sqlite3.Row]:
+    """Fetch a single department contact row by department + area."""
+    conn = get_connection()
+    row = conn.execute(
+        """
+        SELECT department, area, phone, email, office_address
+        FROM department_contacts
+        WHERE department = ? AND area = ?
+        """,
+        (department, area),
     ).fetchone()
     conn.close()
     return row
@@ -338,33 +572,44 @@ def _generate_unique_complaint_uid(conn: sqlite3.Connection) -> str:
 def register_complaint(
     user_id: int,
     location: str,
+    latitude: Optional[float],
+    longitude: Optional[float],
     text: str,
     category: str,
     status: str = "Pending",
     priority: str = "Low",
     photo: Optional[str] = None,
-) -> Tuple[str, str]:
+    media_paths: Optional[str] = None,
+    location_key: Optional[str] = None,
+) -> Tuple[str, str, int]:
     """Insert complaint and assign it to mapped department."""
     conn = get_connection()
     cursor = conn.cursor()
     sanitized_priority = priority if priority in PRIORITY_FLOW else "Low"
+    normalized_media_paths = media_paths if media_paths is not None else photo
+    normalized_photo = photo if photo is not None else media_paths
 
     complaint_uid = _generate_unique_complaint_uid(conn)
     cursor.execute(
         """
         INSERT INTO complaints (
-            complaint_uid, user_id, location, text, category, status, priority, photo
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            complaint_uid, user_id, location, latitude, longitude, location_key, text,
+            category, status, priority, photo, media_paths
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             complaint_uid,
             user_id,
             location,
+            latitude,
+            longitude,
+            location_key or "",
             text,
             category,
             status,
             sanitized_priority,
-            photo,
+            normalized_photo,
+            normalized_media_paths,
         ),
     )
     complaint_id = cursor.lastrowid
@@ -394,7 +639,7 @@ def register_complaint(
 
     conn.commit()
     conn.close()
-    return complaint_uid, department_name
+    return complaint_uid, department_name, int(complaint_id)
 
 
 def fetch_complaints(category: Optional[str] = None) -> List[sqlite3.Row]:
@@ -406,11 +651,18 @@ def fetch_complaints(category: Optional[str] = None) -> List[sqlite3.Row]:
             c.complaint_uid,
             COALESCE(u.name, 'Unknown') AS user_name,
             c.location,
+            c.location_key,
             c.text,
             c.category,
             c.status,
             c.priority,
+            c.is_escalated,
+            c.escalation_reason,
+            c.escalation_group,
+            c.escalation_count,
+            c.escalated_at,
             c.photo,
+            c.media_paths,
             c.created_at,
             d.name AS department_name
         FROM complaints c
@@ -424,10 +676,134 @@ def fetch_complaints(category: Optional[str] = None) -> List[sqlite3.Row]:
         query += " WHERE c.category = ?"
         params = (category,)
 
-    query += " ORDER BY c.created_at DESC"
+    query += " ORDER BY (c.priority = 'High') DESC, c.is_escalated DESC, c.created_at DESC"
     rows = conn.execute(query, params).fetchall()
     conn.close()
     return rows
+
+
+def fetch_open_complaints_same_area_category(
+    location_key: str,
+    category: str,
+    exclude_id: Optional[int] = None,
+) -> List[sqlite3.Row]:
+    """Fetch unresolved complaints with same area key + category."""
+    conn = get_connection()
+    query = """
+        SELECT id AS complaint_id, text, priority, status
+        FROM complaints
+        WHERE location_key = ?
+          AND category = ?
+          AND status != 'Resolved'
+    """
+    params: List[object] = [location_key, category]
+    if exclude_id is not None:
+        query += " AND id != ?"
+        params.append(exclude_id)
+    rows = conn.execute(query, tuple(params)).fetchall()
+    conn.close()
+    return rows
+
+
+def set_complaints_high_priority(
+    complaint_ids: List[int],
+    escalation_reason: str,
+    escalation_group: str,
+    escalation_count: int,
+) -> None:
+    """Batch update complaint priority and escalation metadata."""
+    if not complaint_ids:
+        return
+    placeholders = ",".join(["?"] * len(complaint_ids))
+    conn = get_connection()
+    conn.execute(
+        f"""
+        UPDATE complaints
+        SET priority = 'High',
+            is_escalated = 1,
+            escalation_reason = ?,
+            escalation_group = ?,
+            escalation_count = ?,
+            escalated_at = CURRENT_TIMESTAMP
+        WHERE id IN ({placeholders})
+        """,
+        (escalation_reason, escalation_group, escalation_count, *complaint_ids),
+    )
+    conn.commit()
+    conn.close()
+
+
+def fetch_user_complaints(
+    user_id: int,
+    complaint_uid_query: str = "",
+    status: str = "",
+    category: str = "",
+    department: str = "",
+) -> List[sqlite3.Row]:
+    """Fetch one citizen's complaints with optional UID/status/category filters."""
+    conn = get_connection()
+    query = """
+        SELECT
+            c.id AS complaint_id,
+            c.user_id,
+            c.complaint_uid,
+            c.location,
+            c.location_key,
+            c.text,
+            c.category,
+            c.status,
+            c.priority,
+            c.is_escalated,
+            c.escalation_reason,
+            c.escalation_group,
+            c.escalation_count,
+            c.escalated_at,
+            c.photo,
+            c.media_paths,
+            c.created_at,
+            d.name AS department_name
+        FROM complaints c
+        LEFT JOIN assignments a ON c.id = a.complaint_id
+        LEFT JOIN departments d ON a.department_id = d.id
+        WHERE c.user_id = ?
+    """
+    params = [user_id]
+
+    trimmed_uid_query = complaint_uid_query.strip().upper()
+    if trimmed_uid_query:
+        query += " AND UPPER(c.complaint_uid) LIKE ?"
+        params.append(f"%{trimmed_uid_query}%")
+
+    trimmed_status = status.strip()
+    if trimmed_status:
+        query += " AND c.status = ?"
+        params.append(trimmed_status)
+
+    trimmed_category = category.strip()
+    if trimmed_category:
+        query += " AND c.category = ?"
+        params.append(trimmed_category)
+
+    trimmed_department = department.strip()
+    if trimmed_department:
+        query += " AND d.name = ?"
+        params.append(trimmed_department)
+
+    query += " ORDER BY c.created_at DESC, c.id DESC"
+    rows = conn.execute(query, tuple(params)).fetchall()
+    conn.close()
+    return rows
+
+
+def count_user_complaints(user_id: int) -> int:
+    """Return total complaints submitted by one citizen account."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT COUNT(*) AS total FROM complaints WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    return int((row["total"] if row else 0) or 0)
 
 
 def _next_status(current_status: str) -> str:
@@ -501,8 +877,20 @@ def get_complaint_by_id(complaint_id: int) -> Optional[sqlite3.Row]:
         """
         SELECT
             c.id AS complaint_id,
-            c.category
+            c.user_id,
+            c.complaint_uid,
+            c.location,
+            c.category,
+            c.text,
+            c.status,
+            c.resolved_at,
+            COALESCE(u.name, u.username, 'Citizen') AS user_name,
+            u.email AS user_email,
+            d.name AS department_name
         FROM complaints c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN assignments a ON c.id = a.complaint_id
+        LEFT JOIN departments d ON a.department_id = d.id
         WHERE c.id = ?
         """,
         (complaint_id,),
@@ -517,14 +905,23 @@ def get_complaint_by_uid(complaint_uid: str) -> Optional[sqlite3.Row]:
     row = conn.execute(
         """
         SELECT
+            c.id AS complaint_id,
+            c.user_id,
             c.complaint_uid,
             u.name AS user_name,
             c.location,
+            c.location_key,
             c.text,
             c.category,
             c.status,
             c.priority,
+            c.is_escalated,
+            c.escalation_reason,
+            c.escalation_group,
+            c.escalation_count,
+            c.escalated_at,
             c.photo,
+            c.media_paths,
             c.created_at,
             d.name AS department_name
         FROM complaints c
@@ -617,6 +1014,55 @@ def get_analytics_data(category: Optional[str] = None) -> Dict[str, object]:
         resolved_rows = conn.execute(resolved_query + " GROUP BY day").fetchall()
     resolved_map = {row["day"]: row["total"] for row in resolved_rows}
 
+    area_scope_clause = "WHERE status != 'Resolved'"
+    area_params: Tuple[str, ...] = ()
+    if category:
+        area_scope_clause += " AND category = ?"
+        area_params = (category,)
+
+    top_area_rows = conn.execute(
+        f"""
+        SELECT location_key, COUNT(*) AS total
+        FROM complaints
+        {area_scope_clause}
+        GROUP BY location_key
+        ORDER BY total DESC
+        LIMIT 5
+        """,
+        area_params,
+    ).fetchall()
+    top_area_labels = [row["location_key"] or "Unknown" for row in top_area_rows]
+    top_area_counts = [row["total"] for row in top_area_rows]
+
+    repeated_category_rows = conn.execute(
+        f"""
+        SELECT category, COUNT(*) AS total
+        FROM complaints
+        {area_scope_clause}
+        GROUP BY category
+        ORDER BY total DESC
+        LIMIT 5
+        """,
+        area_params,
+    ).fetchall()
+    repeated_category_labels = [row["category"] for row in repeated_category_rows]
+    repeated_category_counts = [row["total"] for row in repeated_category_rows]
+
+    escalated_rows = conn.execute(
+        f"""
+        SELECT location_key, COUNT(*) AS total
+        FROM complaints
+        WHERE is_escalated = 1
+        {"AND category = ?" if category else ""}
+        GROUP BY location_key
+        ORDER BY total DESC
+        LIMIT 5
+        """,
+        params,
+    ).fetchall()
+    escalated_area_labels = [row["location_key"] or "Unknown" for row in escalated_rows]
+    escalated_area_counts = [row["total"] for row in escalated_rows]
+
     conn.close()
 
     most_common_issue = None
@@ -658,4 +1104,10 @@ def get_analytics_data(category: Optional[str] = None) -> Dict[str, object]:
         "weekly_labels": weekly_labels,
         "weekly_received": weekly_received,
         "weekly_resolved": weekly_resolved,
+        "top_area_labels": top_area_labels,
+        "top_area_counts": top_area_counts,
+        "repeated_category_labels": repeated_category_labels,
+        "repeated_category_counts": repeated_category_counts,
+        "escalated_area_labels": escalated_area_labels,
+        "escalated_area_counts": escalated_area_counts,
     }

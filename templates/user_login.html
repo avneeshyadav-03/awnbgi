@@ -13,7 +13,19 @@
     <style>
         body {
             min-height: 100vh;
-            background: radial-gradient(circle at top, #f8fafc 0%, #e2e8f0 40%, #0f172a 100%);
+            background:
+                radial-gradient(ellipse 80% 60% at 15% 10%, #c7f2e0 0%, transparent 60%),
+                radial-gradient(ellipse 70% 70% at 85% 20%, #cfe0ff 0%, transparent 60%),
+                radial-gradient(ellipse 90% 50% at 50% 100%, #ffe0f0 0%, transparent 65%);
+            background-color: #f0f8f5;
+            color: #1d1d1f;
+        }
+        .auth-card {
+            background: rgba(255, 255, 255, 0.72) !important;
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.8) !important;
+            box-shadow: 0 20px 60px rgba(0, 80, 160, 0.10) !important;
         }
         .auth-wrap {
             min-height: 100vh;
@@ -115,21 +127,126 @@
             background: #ffffff;
             color: #0b3a6e;
         }
+
+        /* Gen Z Aesthetics */
+        .text-gradient {
+            background: linear-gradient(135deg, #00d2ff, #7e57c2, #ff4081);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+            font-weight: 800;
+        }
+        .fade-in-up {
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .pulse-glow {
+            animation: pulseGlow 2s infinite alternate;
+        }
+        @keyframes fadeInUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulseGlow {
+            from { box-shadow: 0 0 10px rgba(13, 110, 253, 0.4); }
+            to { box-shadow: 0 0 25px rgba(13, 110, 253, 0.8), 0 0 10px rgba(126, 87, 194, 0.6); }
+        }
+        .animate-delay-1 { animation-delay: 0.1s; }
+        .animate-delay-2 { animation-delay: 0.2s; }
+        .animate-delay-3 { animation-delay: 0.3s; }
+
+        /* Next / Submit button */
+        .btn-next-submit {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 13px 24px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            color: #ffffff;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(37, 99, 235, 0.38);
+            transition: opacity 0.18s, transform 0.15s, box-shadow 0.18s;
+        }
+        .btn-next-submit svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+        .btn-next-submit:hover {
+            opacity: 0.91;
+            transform: translateY(-2px);
+            box-shadow: 0 7px 24px rgba(37, 99, 235, 0.45);
+        }
+        .btn-next-submit:active {
+            transform: translateY(0);
+        }
+
+        /* Password strength checker */
+        .pw-rules {
+            list-style: none;
+            padding: 10px 14px;
+            margin: 6px 0 0;
+            background: rgba(248, 250, 252, 0.9);
+            border: 1px solid rgba(203, 213, 225, 0.6);
+            border-radius: 10px;
+            display: grid;
+            gap: 6px;
+        }
+        .pw-rules li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .pw-rules li .pw-icon {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1.5px solid #cbd5e1;
+            display: grid;
+            place-items: center;
+            font-size: 0.6rem;
+            flex-shrink: 0;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .pw-rules li.pass { color: #16a34a; }
+        .pw-rules li.pass .pw-icon {
+            background: #16a34a;
+            border-color: #16a34a;
+            color: #fff;
+        }
+        .btn-next-submit:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
     </style>
 </head>
 <body>
     <main class="auth-wrap">
-        <div class="card auth-card">
+        <div class="card auth-card fade-in-up">
             <div class="auth-header">
                 <div class="d-flex align-items-center gap-2">
-                    <strong>Smart AI Grievance</strong>
+                    <strong class="text-gradient">✨ Smart AI Grievance</strong>
                     <div class="lang-switch">
                         <span>🌐</span>
                         <a href="{{ url_for('set_language', lang='en') }}" class="{% if current_lang == 'en' %}active{% endif %}">EN</a>
                         <a href="{{ url_for('set_language', lang='hi') }}" class="{% if current_lang == 'hi' %}active{% endif %}">हिंदी</a>
                     </div>
                 </div>
-                <h1 class="h4 mt-3">{{ get_text('citizen_access') }}</h1>
+                <h1 class="h4 mt-3">👋 {{ get_text('citizen_access') }}</h1>
                 <p class="mb-0">{{ get_text('login_create_account') }}</p>
 
                 <div class="toggle-bar" role="tablist">
@@ -159,11 +276,11 @@
                         {% endwith %}
 
                         <div id="loginPane" class="auth-pane {% if not show_register %}active{% endif %}">
-                            <h2 class="h5">{{ get_text('sign_in') }}</h2>
+                            <h2 class="h5">🔑 {{ get_text('sign_in') }}</h2>
                             <p class="auth-note">Use your username or email to sign in.</p>
                             <form method="POST" action="{{ url_for('user_login') }}">
-                                <div class="mb-3">
-                                    <label class="form-label">{{ get_text('username_or_email') }}</label>
+                                <div class="mb-3 animate-delay-1 fade-in-up">
+                                    <label class="form-label">👤 {{ get_text('username_or_email') }}</label>
                                     <input
                                         type="text"
                                         class="form-control"
@@ -182,16 +299,29 @@
                                         required
                                     />
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100">{{ get_text('login') }}</button>
+                                <button type="submit" class="btn-next-submit w-100 animate-delay-3 fade-in-up">
+                                    <span>{{ get_text('login') }}</span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+                                </button>
                             </form>
                         </div>
 
                         <div id="registerPane" class="auth-pane {% if show_register %}active{% endif %}">
-                            <h2 class="h5">{{ get_text('sign_up') }}</h2>
+                            <h2 class="h5">✨ {{ get_text('sign_up') }}</h2>
                             <p class="auth-note">Create a new account to start filing grievances.</p>
                             <form method="POST" action="{{ url_for('register') }}">
-                                <div class="mb-3">
-                                    <label class="form-label">{{ get_text('username') }}</label>
+                                <div class="mb-3 animate-delay-1 fade-in-up">
+                                    <label class="form-label">🪪 Full Name</label>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        name="full_name"
+                                        placeholder="Enter your full name"
+                                        required
+                                    />
+                                </div>
+                                <div class="mb-3 animate-delay-1 fade-in-up">
+                                    <label class="form-label">👤 {{ get_text('username') }}</label>
                                     <input
                                         type="text"
                                         class="form-control"
@@ -216,9 +346,25 @@
                                         type="password"
                                         class="form-control"
                                         name="password"
+                                        id="regPassword"
                                         placeholder="Create a password"
                                         required
+                                        autocomplete="new-password"
                                     />
+                                    <ul class="pw-rules" id="pwRules" aria-live="polite">
+                                        <li id="rule-len">
+                                            <span class="pw-icon">✓</span>
+                                            More than 6 characters
+                                        </li>
+                                        <li id="rule-case">
+                                            <span class="pw-icon">✓</span>
+                                            Mix of uppercase &amp; lowercase letters
+                                        </li>
+                                        <li id="rule-sym">
+                                            <span class="pw-icon">✓</span>
+                                            At least one special symbol (!@#$%^&amp;* …)
+                                        </li>
+                                    </ul>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">{{ get_text('confirm_password') }}</label>
@@ -230,7 +376,10 @@
                                         required
                                     />
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100">{{ get_text('create_account') }}</button>
+                                <button type="submit" class="btn-next-submit w-100 animate-delay-3 fade-in-up" id="regSubmitBtn" disabled>
+                                    <span>{{ get_text('create_account') }}</span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+                                </button>
                             </form>
                         </div>
 
@@ -259,6 +408,46 @@
                     });
                 });
             });
+        })();
+    </script>
+
+    <script>
+        /* ── Password Strength Checker ─────────────────────────── */
+        (function () {
+            const pwInput  = document.getElementById('regPassword');
+            const submitBtn = document.getElementById('regSubmitBtn');
+            const ruleLen  = document.getElementById('rule-len');
+            const ruleCase = document.getElementById('rule-case');
+            const ruleSym  = document.getElementById('rule-sym');
+
+            if (!pwInput || !submitBtn) return;
+
+            function setRule(el, pass) {
+                if (pass) {
+                    el.classList.add('pass');
+                } else {
+                    el.classList.remove('pass');
+                }
+            }
+
+            function checkPassword() {
+                const val = pwInput.value;
+                const hasLen  = val.length > 6;
+                const hasUpper = /[A-Z]/.test(val);
+                const hasLower = /[a-z]/.test(val);
+                const hasSym  = /[^A-Za-z0-9]/.test(val);
+                const hasCase = hasUpper && hasLower;
+
+                setRule(ruleLen,  hasLen);
+                setRule(ruleCase, hasCase);
+                setRule(ruleSym,  hasSym);
+
+                const allPass = hasLen && hasCase && hasSym;
+                submitBtn.disabled = !allPass;
+            }
+
+            pwInput.addEventListener('input', checkPassword);
+            checkPassword(); /* run once on load */
         })();
     </script>
 </body>

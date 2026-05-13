@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .venv/
+win_venv/
+.env
 
 # Runtime artifacts
 database/grievance_system.db

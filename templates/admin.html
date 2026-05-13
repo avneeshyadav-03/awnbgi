@@ -4,7 +4,7 @@
 {% block breadcrumb %}Smart AI Grievance / Command Center / {{ dashboard_label }}{% endblock %}
 
 {% block content %}
-<section class="kpi-grid" aria-label="Dashboard metrics">
+<section class="kpi-grid animate-delay-1 fade-in-up" aria-label="Dashboard metrics">
     {% set total_trend = 1 if summary['total'] == 0 else ((summary['total'] * 0.08) | round(0, 'ceil') | int) %}
     {% set pending_trend = 1 if summary['pending'] == 0 else ((summary['pending'] * 0.06) | round(0, 'ceil') | int) %}
     {% set progress_trend = 1 if summary['in_progress'] == 0 else ((summary['in_progress'] * 0.05) | round(0, 'ceil') | int) %}
@@ -14,7 +14,7 @@
         <div class="kpi-icon total">
             <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h7v7H4V4zm9 0h7v4h-7V4zM4 13h4v7H4v-7zm6 0h10v7H10v-7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
         </div>
-        <p class="kpi-label">Total</p>
+        <p class="kpi-label">📊 Total</p>
         <h3 class="kpi-value">{{ summary['total'] }}</h3>
         <p class="kpi-trend success">↑ {{ total_trend }} since yesterday</p>
     </article>
@@ -23,7 +23,7 @@
         <div class="kpi-icon pending">
             <svg viewBox="0 0 24 24" fill="none"><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.8"/></svg>
         </div>
-        <p class="kpi-label">Pending</p>
+        <p class="kpi-label">⏳ Pending</p>
         <h3 class="kpi-value">{{ summary['pending'] }}</h3>
         <p class="kpi-trend danger">↑ {{ pending_trend }} since yesterday</p>
     </article>
@@ -32,7 +32,7 @@
         <div class="kpi-icon progress">
             <svg viewBox="0 0 24 24" fill="none"><path d="M4 12h4l2 5 4-10 2 5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <p class="kpi-label">In Progress</p>
+        <p class="kpi-label">🚀 In Progress</p>
         <h3 class="kpi-value">{{ summary['in_progress'] }}</h3>
         <p class="kpi-trend warning">↑ {{ progress_trend }} since yesterday</p>
     </article>
@@ -41,13 +41,13 @@
         <div class="kpi-icon resolved">
             <svg viewBox="0 0 24 24" fill="none"><path d="m6 12 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/></svg>
         </div>
-        <p class="kpi-label">Resolved</p>
+        <p class="kpi-label">✅ Resolved</p>
         <h3 class="kpi-value">{{ summary['resolved'] }}</h3>
         <p class="kpi-trend success">↑ {{ resolved_trend }} since yesterday</p>
     </article>
 </section>
 
-<section class="filter-shell">
+<section class="filter-shell animate-delay-2 fade-in-up">
     <div class="pill-set" role="tablist" aria-label="Complaint status filters">
         <button class="filter-pill active" data-filter="all" type="button">All</button>
         <button class="filter-pill" data-filter="pending" type="button">Pending</button>
@@ -70,15 +70,22 @@
     </div>
 </section>
 
+{% if escalation_alerts %}
+    <section class="escalation-alert" role="status">
+        <strong>Multiple complaints detected from this area.</strong>
+        <span>{{ escalation_alerts | join(', ') }}</span>
+    </section>
+{% endif %}
+
 {% if complaints %}
-    <section class="complaints-grid" id="complaintsGrid" aria-live="polite">
+    <section class="complaints-grid animate-delay-3 fade-in-up" id="complaintsGrid" aria-live="polite">
         {% for complaint in complaints %}
             {% set status_class = complaint['status']|lower|replace(' ', '-') %}
             {% set priority_class = complaint['priority']|lower %}
             {% set category_icon = '🛣️' if complaint['category'] == 'Roads' else ('💧' if complaint['category'] == 'Water' else ('⚡' if complaint['category'] == 'Electricity' else ('🏥' if complaint['category'] == 'Healthcare' else ('🗑️' if complaint['category'] == 'Garbage' else '📌')))) %}
 
             <article
-                class="complaint-card"
+                class="complaint-card {% if complaint['is_escalated'] %}is-escalated{% endif %}"
                 data-status="{{ complaint['status']|lower }}"
                 data-priority="{{ complaint['priority']|lower }}"
                 data-created="{{ complaint['created_at'] }}"
@@ -91,6 +98,9 @@
                     <span class="id-pill">{{ complaint['complaint_uid'] }}</span>
                     <div class="badge-row">
                         <span class="badge priority {{ priority_class }}">{{ complaint['priority'] }}</span>
+                        {% if complaint['is_escalated'] %}
+                            <span class="badge escalation">Area Escalation</span>
+                        {% endif %}
                         <span class="badge status {{ status_class }}">{{ complaint['status'] }}</span>
                     </div>
                 </header>
@@ -106,12 +116,21 @@
                 <p class="complaint-copy" data-collapsible>{{ complaint['text'] }}</p>
                 <button type="button" class="read-more" data-toggle-text>Read more</button>
 
-                {% if complaint['photo'] %}
-                    {% set photos = complaint['photo'].split(',') %}
+                {% set media_csv = complaint['media_paths'] or complaint['photo'] %}
+                {% if media_csv %}
+                    {% set media_files = media_csv.split(',') %}
                     <div class="complaint-proof">
-                        {% for photo in photos %}
-                            {% if photo %}
-                                <img src="{{ url_for('static', filename='uploads/' + photo) }}" width="120" alt="Complaint proof">
+                        {% for media_file in media_files %}
+                            {% if media_file %}
+                                {% set media_name = media_file|lower %}
+                                {% if media_name.endswith('.mp4') or media_name.endswith('.mov') or media_name.endswith('.avi') %}
+                                    <video width="180" controls preload="metadata">
+                                        <source src="{{ url_for('static', filename='uploads/' + media_file) }}">
+                                        Your browser does not support the video tag.
+                                    </video>
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='uploads/' + media_file) }}" width="120" alt="Complaint proof">
+                                {% endif %}
                             {% endif %}
                         {% endfor %}
                     </div>
@@ -127,7 +146,7 @@
                                 <option value="{{ status }}" {% if complaint['status'] == status %}selected{% endif %}>{{ status }}</option>
                             {% endfor %}
                         </select>
-                        <button type="submit" class="btn btn-primary">Update Status</button>
+                        <button type="submit" class="btn btn-primary pulse-glow">Update Status</button>
                     </form>
                     <small class="created-at">{{ complaint['created_at'] }}</small>
                 </div>
